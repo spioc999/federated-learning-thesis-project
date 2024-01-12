@@ -4,7 +4,7 @@ import numpy as np
 INPUT_SHAPE = (28, 28, 1)
 NUM_CLASSES = 10
 
-def get_model():
+def get_model() -> tf.keras.Model:
     """Constructs a simple model architecture suitable for MNIST."""
     """
     model = tf.keras.models.Sequential(
