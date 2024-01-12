@@ -1,4 +1,4 @@
-from actors.fed_client import FedClient
+from fed_parties.fed_client import FedClient
 from services.keras_and_datasets import get_model
 import random
 from multiprocessing.pool import ThreadPool
