@@ -39,7 +39,7 @@ class FedClient:
         return enc_weights
     
     
-    def update_models_with_encrypted_weights(self, encrypted_weights: List[ts.CKKSTensor], num_sum: int) -> None:
+    def update_model_with_encrypted_summed_weights(self, encrypted_weights: List[ts.CKKSTensor], num_sum: int) -> None:
         updated_weights = decrypt_tensors_and_scale(encrypted_weights, self.secret_key, num_sum)
         self.model.set_weights(updated_weights)
 

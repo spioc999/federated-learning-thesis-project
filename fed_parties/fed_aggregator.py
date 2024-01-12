@@ -54,7 +54,7 @@ class FedAggregator:
         # Update all clients
         with ThreadPool() as pool:
             pool.map(
-                lambda client: client.update_models_with_encrypted_weights(he_summed_weights, num_summ),
+                lambda client: client.update_model_with_encrypted_summed_weights(he_summed_weights, num_summ),
                 self.clients,
             )
 
