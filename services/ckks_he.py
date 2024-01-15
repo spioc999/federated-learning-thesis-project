@@ -16,8 +16,7 @@ def create_ckks_encrypted_tensor_list(arrays: List[np.array], ckks_context: ts.C
     return enc_tensors
 
 
-def decrypt_tensors_and_scale(enc_tensors: List[ts.CKKSTensor], secret_key: ts_enc_context.SecretKey, scale: int) -> List[np.array]:
+def decrypt_tensors(enc_tensors: List[ts.CKKSTensor], secret_key: ts_enc_context.SecretKey) -> List[np.array]:
     plain_tensors = [enc_tensor.decrypt(secret_key) for enc_tensor in enc_tensors]
     restructured_arrays = [np.array(plain_tensor.raw, dtype=np.float32).reshape(plain_tensor.shape) for plain_tensor in plain_tensors]
-    scaled_arrays = [arrays / scale for arrays in restructured_arrays]
-    return scaled_arrays
+    return restructured_arrays

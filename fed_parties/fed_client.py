@@ -2,7 +2,7 @@ import numpy as np
 from typing import Tuple, List
 import tenseal as ts
 import tenseal.enc_context as ts_enc
-from services.ckks_he import create_ckks_encrypted_tensor_list, decrypt_tensors_and_scale
+from services.ckks_he import create_ckks_encrypted_tensor_list, decrypt_tensors
 from services.keras_and_datasets import get_model
 
 class FedClient:
@@ -11,8 +11,8 @@ class FedClient:
         id: int,
         train_dataset: Tuple,
         test_dataset: Tuple,
-        context_ckks: ts.Context,
-        secret_key: ts_enc.SecretKey,
+        context_ckks: ts.Context=None,
+        secret_key: ts_enc.SecretKey=None,
     ):
         self.id = id
         self.train_dataset = train_dataset
@@ -21,12 +21,12 @@ class FedClient:
         self.secret_key = secret_key
 
 
-    def initialize_model(self, model_weights: list[np.array]):
+    def initialize_model(self, model_weights: List[np.array]) -> None:
         self.model = get_model()
-        self.model.set_weights(model_weights)
+        self.set_model_weights(model_weights)
 
 
-    def fit(self, batch_size: int = 128, epochs: int = 2) -> List[ts.CKKSTensor]:
+    def fit(self, batch_size: int = 128, epochs: int = 2) -> List[np.array]:
         x, y = self.train_dataset
         self.model.fit(
             x,
@@ -34,17 +34,38 @@ class FedClient:
             batch_size=batch_size,
             epochs=epochs,
         )
+        return self.get_model_weights()
 
-        enc_weights = create_ckks_encrypted_tensor_list(self.model.get_weights(), self.context_ckks)
+
+    def fit_with_he(self, batch_size: int = 128, epochs: int = 2) -> List[ts.CKKSTensor]:
+        weigths = self.fit(batch_size=batch_size, epochs=epochs)
+        enc_weights = create_ckks_encrypted_tensor_list(weigths, self.context_ckks)
         return enc_weights
     
+
+    def get_model_weights(self) -> List[np.array]:
+        return self.model.get_weights()
     
-    def update_model_with_encrypted_summed_weights(self, encrypted_weights: List[ts.CKKSTensor], num_sum: int) -> None:
-        updated_weights = decrypt_tensors_and_scale(encrypted_weights, self.secret_key, num_sum)
-        self.model.set_weights(updated_weights)
+
+    def set_model_weights(self, weigths: List[np.array]) -> None:
+        self.model.set_weights(weigths)
+
+
+    def update_model(self, weigths: List[np.array], scale: int) -> None:
+        scaled_weights = [arrays / scale for arrays in weigths]
+        self.set_model_weights(scaled_weights)
+    
+    
+    def update_model_with_he(self, encrypted_weights: List[ts.CKKSTensor], scale: int) -> None:
+        updated_weights = decrypt_tensors(encrypted_weights, self.secret_key)
+        self.update_model(updated_weights, scale)
 
 
     def evaluate(self) -> Tuple[float, float]:
         x, y = self.test_dataset
         loss, accuracy = self.model.evaluate(x, y)
         return float(loss), float(accuracy)
+    
+
+    def evaluate_with_zk_snark(self):
+        pass #TODO complete me 
