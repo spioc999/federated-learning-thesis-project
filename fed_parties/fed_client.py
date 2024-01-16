@@ -31,8 +31,8 @@ class FedClient:
         self.set_model_weights(model_weights)
 
 
-    def fit(self, round: int, batch_size: int = 128, epochs: int = 2) -> List[np.array]:
-        self._client_log(f'Started FIT - Round {round + 1}')
+    def fit(self, round: int, batch_size: int = 128, epochs: int = 2, print_logs: bool = True) -> List[np.array]:
+        if print_logs : self._client_log(f'FIT | ROUND {round} | Batch_sizStarted')
         x, y = self.train_dataset
         self.model.fit(
             x,
@@ -40,12 +40,12 @@ class FedClient:
             batch_size=batch_size,
             epochs=epochs,
         )
-        self._client_log(f'Completed FIT - Round {round + 1}')
+        if print_logs : self._client_log(f'FIT | ROUND {round} | Completed and returning weights')
         return self.get_model_weights()
 
 
     def fit_with_he(self, round: int, batch_size: int = 128, epochs: int = 2) -> List[ts.CKKSTensor]:
-        self._client_log(f'Starting FIT_WITH_HE - Round {round + 1}')
+        self._client_log(f'FIT_WITH_HE | ROUND {round} | Started')
         weigths = self.fit(round=round, batch_size=batch_size, epochs=epochs)
         self._client_log(f'Encrypting weights FIT_WITH_HE - Round {round + 1}')
         enc_weights = create_ckks_encrypted_tensor_list(weigths, self.context_ckks)

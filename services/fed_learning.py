@@ -45,42 +45,39 @@ def start_fed_averaging_mnist_simulation(num_clients: int, num_rounds: int, frac
     
     logInfo(f'[MAIN] Starting FedAveraging MNIST simulation...')
     _setup_config(enable_he, enable_zk_proof, verbose)
-    logInfo(f'[MAIN] Simulation config: {FED_CONFIG}')
+    logInfo(f'[MAIN] SETUP | Config: {FED_CONFIG}')
 
     context_ckks, secret_key = None, None
 
     if(FED_CONFIG[HE_CONFIG_KEY]):
-        logInfo(f'[MAIN] Creating homomorphic encryption keys...')
+        logInfo(f'[MAIN] SETUP | Creating homomorphic encryption keys...')
         context_ckks, secret_key = generate_context_and_secret()
-        logInfo(f'[MAIN] Homomorphic encryption keys created!')
+        logInfo(f'[MAIN] SETUP | Homomorphic encryption keys created!')
 
     if(FED_CONFIG[ZK_CONFIG_KEY]):
         pass #TODO
 
 
     clients = _generate_clients(num_clients, context_ckks, secret_key)
-
-    logInfo(f'[MAIN] FedClients created!')
+    logInfo(f'[MAIN] SETUP | FedClients created!')
 
     aggregator = FedAggregator(
         clients=clients,
         fraction_fit=fraction_fit,
         fraction_evaluate=fraction_evaluate,
     )
+    logInfo(f'[MAIN] SETUP | FedAggregator created and ready!')
 
-    logInfo(f'[MAIN] FedAggregator created and ready!')
+    aggregator.initialize()
 
-    aggregator.initialize_models()
-
-    for round in range(num_rounds):
-        logInfo(f'[MAIN] Starting ROUND {round + 1}...')
+    for round in range(1, num_rounds + 1):
+        logInfo(f'[MAIN] ROUND {round} | Started')
 
         aggregator.run_distributed_fit(fed_round=round)
-        aggregator.run_check_models(fed_round=round)
+        aggregator.run_get_aggregated_model_and_align_clients(fed_round=round)
         aggregator.run_distributed_evaluate(fed_round=round)
 
-        logInfo(f'[MAIN] ROUND, EVAL_loss, EVAL_accuracy : {aggregator.history["evaluation"][-1]}')
-        logInfo(f'[MAIN] Completed ROUND {round + 1}')
+        logInfo(f'[MAIN] ROUND {round} | Completed')
 
     
-    logInfo(f'[MAIN] Completed FedAveraging MNIST simulation!')
+    logInfo(f'[MAIN] Completed FedAveraging MNIST simulation successfully!')

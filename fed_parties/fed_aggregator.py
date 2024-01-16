@@ -20,6 +20,9 @@ class FedAggregator:
             'fit': [],
             'evaluate': []
         }
+        self.model = get_model()
+
+
 
     
     def _aggregator_log(self, message: str):
@@ -27,49 +30,57 @@ class FedAggregator:
         logInfo(f'[FedAggregator] {message}')
     
 
-    def initialize_models(self) -> None:
+
+
+    def initialize(self) -> None:
         """Initialize global model parameters."""
+        self._aggregator_log('INITIALIZE | Started')
 
-        self._aggregator_log('Initializing models...')
-        init_model_weights = get_model().get_weights()
-
+        self._aggregator_log(f'INITIALIZE | CONFIG | Clients: {len(self.clients)} - Fraction_fit: {self.fraction_fit} - Fraction_evaluate: {self.fraction_evaluate}')
+        
+        self._aggregator_log('INITIALIZE | CLIENT_MODELS_WITH_WEIGHTS | Started')
+        init_model_weights = self.model.get_weights()
         with ThreadPool() as pool:
             pool.map(
                 lambda client: client.initialize_model(init_model_weights),
                 self.clients,
             )
+        self._aggregator_log('INITIALIZE | CLIENT_MODELS_WITH_WEIGHTS | Completed')
 
-        self._aggregator_log('Initialization of models COMPLETED!')
+        self._aggregator_log('INITIALIZE | Completed')
+
+
 
 
     def run_distributed_fit(self, fed_round: int) -> None:
-        self._aggregator_log(f'Starting FIT - ROUND {fed_round}')
+        self._aggregator_log(f'FIT | ROUND {fed_round} | Started')
 
         num_fit_clients = round(len(self.clients) * self.fraction_fit)
         fit_clients = random.sample(self.clients, num_fit_clients)
+        self._aggregator_log(f'FIT | ROUND {fed_round} | Sampled {len(fit_clients)} clients')
 
         clients_weights = []
         
-        # Distribute fit
+        self._aggregator_log(f'FIT | ROUND {fed_round} | CLIENTS_FIT | Started')
         with ThreadPool() as pool:
             for fit_result in pool.map(
                 lambda client: 
-                    client.fit_with_he() if FED_CONFIG[HE_CONFIG_KEY]
-                    else client.fit(),
+                    client.fit_with_he(fed_round) if FED_CONFIG[HE_CONFIG_KEY]
+                    else client.fit(fed_round),
                 fit_clients
             ):
                 clients_weights.append(fit_result)
+        self._aggregator_log(f'FIT | ROUND {fed_round} | CLIENTS_FIT | Completed')
 
-        # Addition (aggregation)
+        self._aggregator_log(f'FIT | ROUND {fed_round} | AGGREGATION_WEIGHTS | Started')
         summed_weights = [client_weights for client_weights in clients_weights[0]]
-
         for client_enc_weights in clients_weights[1:]:
             for i, enc_weights in enumerate(client_enc_weights):
                 summed_weights[i] = summed_weights[i] + enc_weights
-
         num_summ = len(clients_weights)
+        self._aggregator_log(f'FIT | ROUND {fed_round} | AGGREGATION_WEIGHTS | Completed')
 
-        # Update all clients
+        self._aggregator_log(f'FIT | ROUND {fed_round} | UPDATING_CLIENTS_WITH_AGGREGATED_WEIGHTS | Started')
         with ThreadPool() as pool:
             pool.map(
                 lambda client: 
@@ -77,9 +88,17 @@ class FedAggregator:
                     else client.update_model(summed_weights, num_summ),
                 self.clients,
             )
+        self._aggregator_log(f'FIT | ROUND {fed_round} | UPDATING_CLIENTS_WITH_AGGREGATED_WEIGHTS | Completed')
+
+        self._aggregator_log(f'FIT | ROUND {fed_round} | Completed')
 
 
-    def run_check_models(self, fed_round: int) -> None:
+
+
+    def run_get_aggregated_model_and_align_clients(self, fed_round: int) -> None:
+        self._aggregator_log(f'GET_AGGREGATED_MODEL | ROUND {fed_round} | Started')
+
+        #TODO add voting here and update models
         clients_weights = []
         with ThreadPool() as pool:
             for client_weights in pool.map(
@@ -88,22 +107,37 @@ class FedAggregator:
             ):
                 clients_weights.append(client_weights)
 
-        return all(i == clients_weights[0] for i in clients_weights)
+        weights = clients_weights[0] #TODO
+        self._aggregator_log(f'GET_AGGREGATED_MODEL | ROUND {fed_round} | Mock check voting: {all(i == clients_weights[0] for i in clients_weights)}')
+
+        #Update aggregator model
+        self.model.set_weights(weights)
+        self._aggregator_log(f'GET_AGGREGATED_MODEL | ROUND {fed_round} | Completed')
+
+
 
 
     def run_distributed_evaluate(self, fed_round: int) -> None:
-        #TODO complete me
+        self._aggregator_log(f'EVALUATE | ROUND {fed_round} | Started')
+
         num_eval_clients = round(len(self.clients) * self.fraction_evaluate)
         eval_clients = random.sample(self.clients, num_eval_clients)
+        self._aggregator_log(f'EVALUATE | ROUND {fed_round} | Sampled {len(eval_clients)} clients')
 
+        #TODO complete me
         losses = []
         accuracies = []
         
-        # Distribute evaluate
+        self._aggregator_log(f'EVALUATE | ROUND {fed_round} | CLIENTS_EVALUATE | Started')
         with ThreadPool() as pool:
             for eval_result in pool.map(lambda client: client.evaluate(), eval_clients):
                 loss, accuracy = eval_result
                 losses.append(loss)
                 accuracies.append(accuracy)
+        self._aggregator_log(f'EVALUATE | ROUND {fed_round} | CLIENTS_EVALUATE | Completed')
 
-        self.history['evaluate'].append((fed_round, np.mean(losses), np.mean(accuracies)))
+        mean_loss, mean_accuracy = np.mean(losses), np.mean(accuracies)
+        self.history['evaluate'].append((fed_round, mean_loss, mean_accuracy))
+        
+        self._aggregator_log(f'EVALUATE | ROUND {fed_round} | AGGREGATED_METRICS | Loss: {mean_loss} - Accuracy: {mean_accuracy}')
+        self._aggregator_log(f'EVALUATE | ROUND {fed_round} | Completed')
