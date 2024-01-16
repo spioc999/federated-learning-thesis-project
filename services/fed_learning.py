@@ -74,13 +74,15 @@ def start_fed_averaging_mnist_simulation(num_clients: int, num_rounds: int, frac
 
     for round in range(1, num_rounds + 1):
         log_info(f'[MAIN] ROUND {round} | Started')
+        start_round_datetime = datetime.datetime.now()
 
         aggregator.run_distributed_fit(fed_round=round)
         aggregator.run_get_aggregated_model_and_align_clients(fed_round=round)
         aggregator.run_distributed_evaluate(fed_round=round)
+        
+        end_round_datetime = datetime.datetime.now()
+        log_info(f'[MAIN] ROUND {round} | Completed in {end_round_datetime - start_round_datetime}')
 
-        log_info(f'[MAIN] ROUND {round} | Completed')
-
-    log_info(f'[MAIN] Evaluation metrics history: {aggregator.history["evaluate"]}')
-    end_date_time = datetime.datetime.now()
-    log_info(f'[MAIN] Completed FedAveraging MNIST simulation successfully in {end_date_time - start_datetime}!')
+    log_info(f'[MAIN] Evaluation metrics history (round, loss, accuracy):\n{aggregator.history["evaluate"]}')
+    end_datetime = datetime.datetime.now()
+    log_info(f'[MAIN] Completed FedAveraging MNIST simulation successfully in {end_datetime - start_datetime}!')

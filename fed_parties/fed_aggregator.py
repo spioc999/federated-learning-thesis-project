@@ -37,19 +37,16 @@ class FedAggregator:
 
 
     def initialize(self) -> None:
-        """Initialize global model parameters."""
         self._aggregator_log('INITIALIZE | Started')
 
         self._aggregator_log(f'INITIALIZE | CONFIG | Clients: {len(self.clients)} - Fraction_fit: {self.fraction_fit} - Fraction_evaluate: {self.fraction_evaluate}')
         
-        self._aggregator_log('INITIALIZE | CLIENT_MODELS_WITH_WEIGHTS | Started')
         init_model_weights = self.model.get_weights()
         with ThreadPool() as pool:
             pool.map(
                 lambda client: client.initialize_model(init_model_weights),
                 self.clients,
             )
-        self._aggregator_log('INITIALIZE | CLIENT_MODELS_WITH_WEIGHTS | Completed')
 
         self._aggregator_log('INITIALIZE | Completed')
 

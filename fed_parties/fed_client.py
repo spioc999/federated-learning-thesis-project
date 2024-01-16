@@ -19,6 +19,7 @@ class FedClient:
         self.test_dataset = test_dataset
         self.context_ckks = context_ckks
         self.secret_key = secret_key
+        self.model = get_model()
 
 
 
@@ -31,8 +32,8 @@ class FedClient:
 
 
     def initialize_model(self, model_weights: List[np.array]) -> None:
-        self.model = get_model()
-        self.set_model_weights(model_weights)
+        self._client_log(f'INITIALIZE | Initializing model weights')
+        self.set_model_weights(model_weights, _force_print_logs=False)
 
 
 
@@ -69,10 +70,9 @@ class FedClient:
 
 
 
-    def set_model_weights(self, weigths: List[np.array]) -> None:
-        self._client_log(f'SET_MODEL_WEIGHTS | Started')
+    def set_model_weights(self, weigths: List[np.array], _force_print_logs: bool = True) -> None:
+        if _force_print_logs: self._client_log(f'SET_MODEL_WEIGHTS | Setting weights')
         self.model.set_weights(weigths)
-        self._client_log(f'SET_MODEL_WEIGHTS | Completed')
 
 
 
