@@ -18,7 +18,7 @@ if __name__ == "__main__":
     args = parse_args()
 
     start_fed_averaging_mnist_simulation(
-        num_clients=10,
+        num_clients=5,
         num_rounds=5,
         fraction_fit=1.0,
         fraction_evaluate=0.3,
