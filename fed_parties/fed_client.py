@@ -31,51 +31,60 @@ class FedClient:
         self.set_model_weights(model_weights)
 
 
-    def fit(self, round: int, batch_size: int = 128, epochs: int = 2, print_logs: bool = True) -> List[np.array]:
-        if print_logs : self._client_log(f'FIT | ROUND {round} | Batch_sizStarted')
+    def fit(self, round: int, batch_size: int = 128, epochs: int = 2, _force_print_logs: bool = True) -> List[np.array]:
+        if _force_print_logs: self._client_log(f'FIT | ROUND {round} | Batch_Size: {batch_size} - Epochs: {epochs} | Started')
         x, y = self.train_dataset
         self.model.fit(
-            x,
-            y,
+            x, y,
             batch_size=batch_size,
             epochs=epochs,
         )
-        if print_logs : self._client_log(f'FIT | ROUND {round} | Completed and returning weights')
+        if _force_print_logs: self._client_log(f'FIT | ROUND {round} | Completed and returning weights')
         return self.get_model_weights()
 
 
     def fit_with_he(self, round: int, batch_size: int = 128, epochs: int = 2) -> List[ts.CKKSTensor]:
-        self._client_log(f'FIT_WITH_HE | ROUND {round} | Started')
-        weigths = self.fit(round=round, batch_size=batch_size, epochs=epochs)
-        self._client_log(f'Encrypting weights FIT_WITH_HE - Round {round + 1}')
+        self._client_log(f'FIT_WITH_HE | ROUND {round} | Batch_Size: {batch_size} - Epochs: {epochs} | Started')
+        weigths = self.fit(round=round, batch_size=batch_size, epochs=epochs, _force_print_logs=False)
+        self._client_log(f'FIT_WITH_HE | ROUND {round} | Fit completed and encrypting weights')
         enc_weights = create_ckks_encrypted_tensor_list(weigths, self.context_ckks)
-        self._client_log(f'Completed FIT_WITH_HE - Round {round + 1}')
+        self._client_log(f'FIT_WITH_HE | ROUND {round} | Completed and returning CKKS encrypted weights')
         return enc_weights
     
 
     def get_model_weights(self) -> List[np.array]:
+        self._client_log(f'GET_MODEL_WEIGHTS | Returning')
         return self.model.get_weights()
     
 
     def set_model_weights(self, weigths: List[np.array]) -> None:
+        self._client_log(f'SET_MODEL_WEIGHTS | Started')
         self.model.set_weights(weigths)
+        self._client_log(f'SET_MODEL_WEIGHTS | Completed')
 
 
     def update_model(self, weigths: List[np.array], scale: int) -> None:
+        self._client_log(f'UPDATE_MODEL | Scaling weights')
         scaled_weights = [arrays / scale for arrays in weigths]
         self.set_model_weights(scaled_weights)
     
     
     def update_model_with_he(self, encrypted_weights: List[ts.CKKSTensor], scale: int) -> None:
+        self._client_log(f'UPDATE_MODEL_WITH_HE | Decrypting weights')
         updated_weights = decrypt_tensors(encrypted_weights, self.secret_key)
+        self._client_log(f'UPDATE_MODEL_WITH_HE | Weights decrypted')
         self.update_model(updated_weights, scale)
 
 
-    def evaluate(self) -> Tuple[float, float]:
+    def evaluate(self, round: int, _force_print_logs: bool = True) -> Tuple[float, float]:
+        if _force_print_logs: self._client_log(f'EVALUATE | ROUND {round} | Started')
         x, y = self.test_dataset
         loss, accuracy = self.model.evaluate(x, y)
+        if _force_print_logs: self._client_log(f'EVALUATE | ROUND {round} | Completed')
         return float(loss), float(accuracy)
     
 
-    def evaluate_with_zk_snark(self):
-        pass #TODO complete me 
+    def evaluate_with_zk_snark(self, round: int):
+        self._client_log(f'EVALUATE_WITH_ZK_SNARK | ROUND {round} | Started')
+        #TODO complete me 
+        self._client_log(f'EVALUATE_WITH_ZK_SNARK | ROUND {round} | Completed')

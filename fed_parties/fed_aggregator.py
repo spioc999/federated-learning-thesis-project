@@ -130,7 +130,12 @@ class FedAggregator:
         
         self._aggregator_log(f'EVALUATE | ROUND {fed_round} | CLIENTS_EVALUATE | Started')
         with ThreadPool() as pool:
-            for eval_result in pool.map(lambda client: client.evaluate(), eval_clients):
+            for eval_result in pool.map(
+                    lambda client:
+                        client.evaluate_with_zk_snark(fed_round) if FED_CONFIG[ZK_CONFIG_KEY]
+                        else client.evaluate(fed_round),
+                    eval_clients
+                ):
                 loss, accuracy = eval_result
                 losses.append(loss)
                 accuracies.append(accuracy)
