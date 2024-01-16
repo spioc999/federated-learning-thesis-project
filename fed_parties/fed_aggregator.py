@@ -1,7 +1,6 @@
 from fed_parties.fed_client import FedClient
 from services.keras_and_datasets import get_model
 import random
-from multiprocessing.pool import ThreadPool
 import numpy as np
 from typing import List, Dict
 
@@ -42,11 +41,8 @@ class FedAggregator:
         self._aggregator_log(f'INITIALIZE | CONFIG | Clients: {len(self.clients)} - Fraction_fit: {self.fraction_fit} - Fraction_evaluate: {self.fraction_evaluate}')
         
         init_model_weights = self.model.get_weights()
-        with ThreadPool() as pool:
-            pool.map(
-                lambda client: client.initialize_model(init_model_weights),
-                self.clients,
-            )
+        for client in self.clients:
+            client.initialize_model(init_model_weights)
 
         self._aggregator_log('INITIALIZE | Completed')
 
@@ -63,14 +59,14 @@ class FedAggregator:
         clients_weights = []
         
         self._aggregator_log(f'FIT | ROUND {fed_round} | CLIENTS_FIT | Started')
-        with ThreadPool() as pool:
-            for fit_result in pool.map(
-                lambda client: 
-                    client.fit_with_he(fed_round) if self.config[HE_CONFIG_KEY]
-                    else client.fit(fed_round),
-                fit_clients
-            ):
-                clients_weights.append(fit_result)
+        for client in fit_clients:
+            if(self.config[HE_CONFIG_KEY]):
+                fit_result = client.fit_with_he(fed_round)
+            else:
+                fit_result = client.fit(fed_round)
+
+            clients_weights.append(fit_result)    
+
         self._aggregator_log(f'FIT | ROUND {fed_round} | CLIENTS_FIT | Completed')
 
         self._aggregator_log(f'FIT | ROUND {fed_round} | AGGREGATION_WEIGHTS | Started')
@@ -82,13 +78,11 @@ class FedAggregator:
         self._aggregator_log(f'FIT | ROUND {fed_round} | AGGREGATION_WEIGHTS | Completed')
 
         self._aggregator_log(f'FIT | ROUND {fed_round} | UPDATING_CLIENTS_WITH_AGGREGATED_WEIGHTS | Started')
-        with ThreadPool() as pool:
-            pool.map(
-                lambda client: 
-                    client.update_model_with_he(summed_weights, num_summ) if self.config[HE_CONFIG_KEY]
-                    else client.update_model(summed_weights, num_summ),
-                self.clients,
-            )
+        for client in self.clients:
+            if self.config[HE_CONFIG_KEY]:
+                client.update_model_with_he(summed_weights, num_summ)
+            else:
+                client.update_model(summed_weights, num_summ)
         self._aggregator_log(f'FIT | ROUND {fed_round} | UPDATING_CLIENTS_WITH_AGGREGATED_WEIGHTS | Completed')
 
         self._aggregator_log(f'FIT | ROUND {fed_round} | Completed')
@@ -101,12 +95,8 @@ class FedAggregator:
 
         #TODO add voting here and update models
         clients_weights = []
-        with ThreadPool() as pool:
-            for client_weights in pool.map(
-                lambda client: client.get_model_weights(),
-                self.clients
-            ):
-                clients_weights.append(client_weights)
+        for client in self.clients:
+            clients_weights.append(client.get_model_weights())
 
         weights = clients_weights[0] #TODO
         self._aggregator_log(f'GET_AGGREGATED_MODEL | ROUND {fed_round} | Mock check voting TODOOO')
@@ -130,16 +120,15 @@ class FedAggregator:
         accuracies = []
         
         self._aggregator_log(f'EVALUATE | ROUND {fed_round} | CLIENTS_EVALUATE | Started')
-        with ThreadPool() as pool:
-            for eval_result in pool.map(
-                    lambda client:
-                        client.evaluate_with_zk_snark(fed_round) if self.config[ZK_CONFIG_KEY]
-                        else client.evaluate(fed_round),
-                    eval_clients
-                ):
-                loss, accuracy = eval_result
-                losses.append(loss)
-                accuracies.append(accuracy)
+        for client in eval_clients:
+            if self.config[ZK_CONFIG_KEY]:
+                loss, accuracy = client.evaluate_with_zk_snark(fed_round)
+            else:
+                loss, accuracy = client.evaluate(fed_round)
+            
+            losses.append(loss)
+            accuracies.append(accuracy)
+            
         self._aggregator_log(f'EVALUATE | ROUND {fed_round} | CLIENTS_EVALUATE | Completed')
 
         mean_loss, mean_accuracy = np.mean(losses), np.mean(accuracies)
