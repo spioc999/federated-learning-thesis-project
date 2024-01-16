@@ -13,7 +13,7 @@ def parse_args():
                     action='store_true')
     return parser.parse_args()
 
-#TODO add argparse
+
 if __name__ == "__main__":    
     args = parse_args()
 
