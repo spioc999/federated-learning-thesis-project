@@ -26,6 +26,7 @@ class FedAggregator:
         from services.logger import logInfo
         logInfo(f'[FedAggregator] {message}')
     
+
     def initialize_models(self) -> None:
         """Initialize global model parameters."""
 
@@ -42,6 +43,8 @@ class FedAggregator:
 
 
     def run_distributed_fit(self, fed_round: int) -> None:
+        self._aggregator_log(f'Starting FIT - ROUND {fed_round}')
+
         num_fit_clients = round(len(self.clients) * self.fraction_fit)
         fit_clients = random.sample(self.clients, num_fit_clients)
 

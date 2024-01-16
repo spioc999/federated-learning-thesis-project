@@ -54,6 +54,9 @@ def start_fed_averaging_mnist_simulation(num_clients: int, num_rounds: int, frac
         context_ckks, secret_key = generate_context_and_secret()
         logInfo(f'[MAIN] Homomorphic encryption keys created!')
 
+    if(FED_CONFIG[ZK_CONFIG_KEY]):
+        pass #TODO
+
 
     clients = _generate_clients(num_clients, context_ckks, secret_key)
 
@@ -70,6 +73,14 @@ def start_fed_averaging_mnist_simulation(num_clients: int, num_rounds: int, frac
     aggregator.initialize_models()
 
     for round in range(num_rounds):
-        logInfo(f'\n[MAIN] Started ROUND {round + 1}')
+        logInfo(f'[MAIN] Starting ROUND {round + 1}...')
 
-        
+        aggregator.run_distributed_fit(fed_round=round)
+        aggregator.run_check_models(fed_round=round)
+        aggregator.run_distributed_evaluate(fed_round=round)
+
+        logInfo(f'[MAIN] ROUND, EVAL_loss, EVAL_accuracy : {aggregator.history["evaluation"][-1]}')
+        logInfo(f'[MAIN] Completed ROUND {round + 1}')
+
+    
+    logInfo(f'[MAIN] Completed FedAveraging MNIST simulation!')

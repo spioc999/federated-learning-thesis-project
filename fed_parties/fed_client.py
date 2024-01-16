@@ -21,12 +21,18 @@ class FedClient:
         self.secret_key = secret_key
 
 
+    def _client_log(self, message: str):
+        from services.logger import logInfo
+        logInfo(f'[FedClient#{self.id}] {message}')
+
+
     def initialize_model(self, model_weights: List[np.array]) -> None:
         self.model = get_model()
         self.set_model_weights(model_weights)
 
 
-    def fit(self, batch_size: int = 128, epochs: int = 2) -> List[np.array]:
+    def fit(self, round: int, batch_size: int = 128, epochs: int = 2) -> List[np.array]:
+        self._client_log(f'Started FIT - Round {round + 1}')
         x, y = self.train_dataset
         self.model.fit(
             x,
@@ -34,12 +40,16 @@ class FedClient:
             batch_size=batch_size,
             epochs=epochs,
         )
+        self._client_log(f'Completed FIT - Round {round + 1}')
         return self.get_model_weights()
 
 
-    def fit_with_he(self, batch_size: int = 128, epochs: int = 2) -> List[ts.CKKSTensor]:
-        weigths = self.fit(batch_size=batch_size, epochs=epochs)
+    def fit_with_he(self, round: int, batch_size: int = 128, epochs: int = 2) -> List[ts.CKKSTensor]:
+        self._client_log(f'Starting FIT_WITH_HE - Round {round + 1}')
+        weigths = self.fit(round=round, batch_size=batch_size, epochs=epochs)
+        self._client_log(f'Encrypting weights FIT_WITH_HE - Round {round + 1}')
         enc_weights = create_ckks_encrypted_tensor_list(weigths, self.context_ckks)
+        self._client_log(f'Completed FIT_WITH_HE - Round {round + 1}')
         return enc_weights
     
 
