@@ -3,19 +3,23 @@ from services.keras_and_datasets import get_model
 import random
 from multiprocessing.pool import ThreadPool
 import numpy as np
-from services.fed_learning import FED_CONFIG, HE_CONFIG_KEY, ZK_CONFIG_KEY
-from typing import List
+from typing import List, Dict
+
+HE_CONFIG_KEY = 'he'
+ZK_CONFIG_KEY = 'zk'
 
 class FedAggregator:
     def __init__(
         self,
         clients: List[FedClient],
+        config: Dict[str, bool],
         fraction_fit: float = 1.0,
         fraction_evaluate: float = 0.3,
     ):
         self.clients = clients
         self.fraction_fit = fraction_fit
         self.fraction_evaluate = fraction_evaluate
+        self.config = config
         self.history = {
             'fit': [],
             'evaluate': []
@@ -26,8 +30,8 @@ class FedAggregator:
 
     
     def _aggregator_log(self, message: str):
-        from services.logger import logInfo
-        logInfo(f'[FedAggregator] {message}')
+        from services.logger import log_info
+        log_info(f'[FedAggregator] {message}')
     
 
 
@@ -65,7 +69,7 @@ class FedAggregator:
         with ThreadPool() as pool:
             for fit_result in pool.map(
                 lambda client: 
-                    client.fit_with_he(fed_round) if FED_CONFIG[HE_CONFIG_KEY]
+                    client.fit_with_he(fed_round) if self.config[HE_CONFIG_KEY]
                     else client.fit(fed_round),
                 fit_clients
             ):
@@ -84,7 +88,7 @@ class FedAggregator:
         with ThreadPool() as pool:
             pool.map(
                 lambda client: 
-                    client.update_model_with_he(summed_weights, num_summ) if FED_CONFIG[HE_CONFIG_KEY]
+                    client.update_model_with_he(summed_weights, num_summ) if self.config[HE_CONFIG_KEY]
                     else client.update_model(summed_weights, num_summ),
                 self.clients,
             )
@@ -108,7 +112,7 @@ class FedAggregator:
                 clients_weights.append(client_weights)
 
         weights = clients_weights[0] #TODO
-        self._aggregator_log(f'GET_AGGREGATED_MODEL | ROUND {fed_round} | Mock check voting: {all(i == clients_weights[0] for i in clients_weights)}')
+        self._aggregator_log(f'GET_AGGREGATED_MODEL | ROUND {fed_round} | Mock check voting TODOOO')
 
         #Update aggregator model
         self.model.set_weights(weights)
@@ -132,7 +136,7 @@ class FedAggregator:
         with ThreadPool() as pool:
             for eval_result in pool.map(
                     lambda client:
-                        client.evaluate_with_zk_snark(fed_round) if FED_CONFIG[ZK_CONFIG_KEY]
+                        client.evaluate_with_zk_snark(fed_round) if self.config[ZK_CONFIG_KEY]
                         else client.evaluate(fed_round),
                     eval_clients
                 ):

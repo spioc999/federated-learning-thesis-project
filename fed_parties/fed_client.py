@@ -24,8 +24,8 @@ class FedClient:
 
 
     def _client_log(self, message: str):
-        from services.logger import logInfo
-        logInfo(f'[FedClient#{self.id}] {message}')
+        from services.logger import log_info
+        log_info(f'[FedClient#{self.id}] {message}')
 
 
 
@@ -37,13 +37,14 @@ class FedClient:
 
 
 
-    def fit(self, round: int, batch_size: int = 128, epochs: int = 2, _force_print_logs: bool = True) -> List[np.array]:
+    def fit(self, round: int, batch_size: int = 128, epochs: int = 1, _force_print_logs: bool = True) -> List[np.array]:
         if _force_print_logs: self._client_log(f'FIT | ROUND {round} | Batch_Size: {batch_size} - Epochs: {epochs} | Started')
         x, y = self.train_dataset
         self.model.fit(
             x, y,
             batch_size=batch_size,
             epochs=epochs,
+            verbose=0
         )
         if _force_print_logs: self._client_log(f'FIT | ROUND {round} | Completed and returning weights')
         return self.get_model_weights()
@@ -51,7 +52,7 @@ class FedClient:
 
 
 
-    def fit_with_he(self, round: int, batch_size: int = 128, epochs: int = 2) -> List[ts.CKKSTensor]:
+    def fit_with_he(self, round: int, batch_size: int = 128, epochs: int = 1) -> List[ts.CKKSTensor]:
         self._client_log(f'FIT_WITH_HE | ROUND {round} | Batch_Size: {batch_size} - Epochs: {epochs} | Started')
         weigths = self.fit(round=round, batch_size=batch_size, epochs=epochs, _force_print_logs=False)
         self._client_log(f'FIT_WITH_HE | ROUND {round} | Fit completed and encrypting weights')
@@ -63,7 +64,6 @@ class FedClient:
 
 
     def get_model_weights(self) -> List[np.array]:
-        self._client_log(f'GET_MODEL_WEIGHTS | Returning')
         return self.model.get_weights()
     
 
@@ -97,7 +97,7 @@ class FedClient:
     def evaluate(self, round: int, _force_print_logs: bool = True) -> Tuple[float, float]:
         if _force_print_logs: self._client_log(f'EVALUATE | ROUND {round} | Started')
         x, y = self.test_dataset
-        loss, accuracy = self.model.evaluate(x, y)
+        loss, accuracy = self.model.evaluate(x, y, verbose=0)
         if _force_print_logs: self._client_log(f'EVALUATE | ROUND {round} | Completed')
         return float(loss), float(accuracy)
     

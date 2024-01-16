@@ -4,17 +4,16 @@ from typing import List
 from services.keras_and_datasets import load_datasets
 import tenseal as ts
 import tenseal.enc_context as ts_enc
-from ckks_he import generate_context_and_secret
-from services.logger import logInfo
+from services.ckks_he import generate_context_and_secret
+from services.logger import log_info, setup_logger
+import datetime
 
-HE_CONFIG_KEY = 'homomorphic_encryption'
-ZK_CONFIG_KEY = 'zero-knowledge_proof'
-VERBOSE_KEY = 'verbose'
+HE_CONFIG_KEY = 'he'
+ZK_CONFIG_KEY = 'zk'
 
 FED_CONFIG = {
     HE_CONFIG_KEY: False,
     ZK_CONFIG_KEY: False,
-    VERBOSE_KEY: False
 }
 
 
@@ -36,48 +35,52 @@ def _setup_config(enable_he: bool, enable_zk_proof: bool, verbose: bool):
     global FED_CONFIG
     FED_CONFIG[HE_CONFIG_KEY] = enable_he
     FED_CONFIG[ZK_CONFIG_KEY] = enable_zk_proof
-    FED_CONFIG[VERBOSE_KEY] = verbose
+    setup_logger(verbose=verbose)
+    
 
 
 def start_fed_averaging_mnist_simulation(num_clients: int, num_rounds: int, fraction_fit: float = 1.0,
                               fraction_evaluate: float = 0.3, enable_he: bool = False,
-                              enable_zk_proof: bool = False, verbose: bool = False) -> None:
+                              enable_zk_proof: bool = False, verbose: bool = True) -> None:
     
-    logInfo(f'[MAIN] Starting FedAveraging MNIST simulation...')
+    start_datetime = datetime.datetime.now()
     _setup_config(enable_he, enable_zk_proof, verbose)
-    logInfo(f'[MAIN] SETUP | Config: {FED_CONFIG}')
+    log_info(f'[MAIN] Starting FedAveraging MNIST simulation...')
+    log_info(f'[MAIN] SETUP | Fed_Config: {FED_CONFIG} - Verbose: {verbose}')
 
     context_ckks, secret_key = None, None
 
     if(FED_CONFIG[HE_CONFIG_KEY]):
-        logInfo(f'[MAIN] SETUP | Creating homomorphic encryption keys...')
+        log_info(f'[MAIN] SETUP | Creating homomorphic encryption keys...')
         context_ckks, secret_key = generate_context_and_secret()
-        logInfo(f'[MAIN] SETUP | Homomorphic encryption keys created!')
+        log_info(f'[MAIN] SETUP | Homomorphic encryption keys created!')
 
     if(FED_CONFIG[ZK_CONFIG_KEY]):
         pass #TODO
 
 
     clients = _generate_clients(num_clients, context_ckks, secret_key)
-    logInfo(f'[MAIN] SETUP | FedClients created!')
+    log_info(f'[MAIN] SETUP | FedClients created!')
 
     aggregator = FedAggregator(
         clients=clients,
         fraction_fit=fraction_fit,
         fraction_evaluate=fraction_evaluate,
+        config= FED_CONFIG
     )
-    logInfo(f'[MAIN] SETUP | FedAggregator created and ready!')
+    log_info(f'[MAIN] SETUP | FedAggregator created and ready!')
 
     aggregator.initialize()
 
     for round in range(1, num_rounds + 1):
-        logInfo(f'[MAIN] ROUND {round} | Started')
+        log_info(f'[MAIN] ROUND {round} | Started')
 
         aggregator.run_distributed_fit(fed_round=round)
         aggregator.run_get_aggregated_model_and_align_clients(fed_round=round)
         aggregator.run_distributed_evaluate(fed_round=round)
 
-        logInfo(f'[MAIN] ROUND {round} | Completed')
+        log_info(f'[MAIN] ROUND {round} | Completed')
 
-    
-    logInfo(f'[MAIN] Completed FedAveraging MNIST simulation successfully!')
+    log_info(f'[MAIN] Evaluation metrics history: {aggregator.history["evaluate"]}')
+    end_date_time = datetime.datetime.now()
+    log_info(f'[MAIN] Completed FedAveraging MNIST simulation successfully in {end_date_time - start_datetime}!')
