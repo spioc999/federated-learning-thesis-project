@@ -78,9 +78,9 @@ class FedAggregator:
 
         self._aggregator_log(f'FIT | ROUND {fed_round} | AGGREGATION_WEIGHTS | Started')
         summed_weights = [client_weights for client_weights in clients_weights[0]]
-        for client_enc_weights in clients_weights[1:]:
-            for i, enc_weights in enumerate(client_enc_weights):
-                summed_weights[i] = summed_weights[i] + enc_weights
+        for client_weights in clients_weights[1:]:
+            for i, weights in enumerate(client_weights):
+                summed_weights[i] = summed_weights[i] + weights
         num_summ = len(clients_weights)
         self._aggregator_log(f'FIT | ROUND {fed_round} | AGGREGATION_WEIGHTS | Completed')
 

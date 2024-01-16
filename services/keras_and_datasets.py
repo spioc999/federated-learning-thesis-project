@@ -6,24 +6,12 @@ NUM_CLASSES = 10
 
 def get_model() -> tf.keras.Model:
     """Constructs a simple model architecture suitable for MNIST."""
-    """
     model = tf.keras.models.Sequential(
         [
-            tf.keras.layers.Flatten(input_shape=(28, 28)),
+            tf.keras.layers.Flatten(input_shape=INPUT_SHAPE),
             tf.keras.layers.Dense(128, activation="relu"),
             tf.keras.layers.Dropout(0.2),
             tf.keras.layers.Dense(10, activation="softmax"),
-        ]
-    )
-    """
-    model = tf.keras.models.Sequential(
-        [
-            tf.keras.Input(shape=INPUT_SHAPE),
-            tf.keras.layers.Conv2D(10, (3, 3), activation="relu"),
-            tf.keras.layers.MaxPooling2D(pool_size=(2, 2)),
-            tf.keras.layers.Flatten(),
-            tf.keras.layers.Dropout(0.2),
-            tf.keras.layers.Dense(NUM_CLASSES, activation="softmax"),
         ]
     )
     model.compile(optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"])
