@@ -24,5 +24,5 @@ if __name__ == "__main__":
         fraction_evaluate=0.3,
         enable_he=args.homomorphic_encryption,
         enable_zk_proof=args.zk_proof,
-        verbose=~args.disable_verbose
+        verbose=not args.disable_verbose
     )
