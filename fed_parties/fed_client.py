@@ -11,17 +11,17 @@ class FedClient:
         id: int,
         train_dataset: Tuple,
         test_dataset: Tuple,
-        context_ckks: ts.Context=None,
-        secret_key: ts_enc.SecretKey=None,
     ):
         self.id = id
         self.train_dataset = train_dataset
         self.test_dataset = test_dataset
-        self.context_ckks = context_ckks
-        self.secret_key = secret_key
         self.model = get_model()
 
 
+    def set_ckks_context_and_secret_key(self, context_ckks: ts.Context, secret_key: ts_enc.SecretKey) -> None:
+        self._client_log(f'SET_CKKS | Setting CKKS context and secret key')
+        self.context_ckks = context_ckks
+        self.secret_key = secret_key
 
 
     def _client_log(self, message: str):

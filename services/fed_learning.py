@@ -2,8 +2,7 @@ from fed_parties.fed_aggregator import FedAggregator
 from fed_parties.fed_client import FedClient
 from typing import List
 from services.keras_and_datasets import load_datasets
-import tenseal as ts
-import tenseal.enc_context as ts_enc
+from multiprocessing.pool import ThreadPool
 from services.ckks_he import generate_context_and_secret
 from services.logger import log_info, setup_logger
 import datetime
@@ -20,15 +19,13 @@ FED_CONFIG = {
 
 SEED = 42
 
-def _generate_clients(num_clients: int, context_ckks: ts.Context = None, secret_key: ts_enc.SecretKey = None) -> List[FedClient]:
+def _generate_clients(num_clients: int) -> List[FedClient]:
     x_train_datasets, y_train_datasets, x_test_datasets, y_test_datasets = load_datasets(num_clients)
     return [
         FedClient(
             id=i,
             train_dataset=(x_train_datasets[i], y_train_datasets[i]),
             test_dataset=(x_test_datasets[i], y_test_datasets[i]),
-            context_ckks=context_ckks,
-            secret_key=secret_key,
         )
         for i in range(num_clients)
     ]
@@ -52,22 +49,14 @@ def start_fed_averaging_mnist_simulation(num_clients: int, num_rounds: int, frac
     log_info(f'[MAIN] Starting FedAveraging MNIST simulation...')
     log_info(f'[MAIN] SETUP | Fed_Config: {FED_CONFIG} - Verbose: {verbose}')
 
-    context_ckks, secret_key = None, None
-
-    if(FED_CONFIG[HE_CONFIG_KEY]):
-        log_info(f'[MAIN] SETUP | Creating homomorphic encryption keys...')
-        context_ckks, secret_key = generate_context_and_secret()
-        log_info(f'[MAIN] SETUP | Homomorphic encryption keys created!')
-
     if(FED_CONFIG[ZK_CONFIG_KEY]):
         pass #TODO
 
 
-    clients = _generate_clients(num_clients, context_ckks, secret_key)
     log_info(f'[MAIN] SETUP | FedClients created!')
 
     aggregator = FedAggregator(
-        clients=clients,
+        clients=_generate_clients(num_clients),
         fraction_fit=fraction_fit,
         fraction_evaluate=fraction_evaluate,
         config= FED_CONFIG
@@ -79,6 +68,16 @@ def start_fed_averaging_mnist_simulation(num_clients: int, num_rounds: int, frac
     for round in range(1, num_rounds + 1):
         log_info(f'[MAIN] ROUND {round} | Started')
         start_round_datetime = datetime.datetime.now()
+
+        if(FED_CONFIG[HE_CONFIG_KEY]):
+            log_info(f'[MAIN] ROUND {round} | Creating homomorphic encryption keys and set in clients...')
+            context_ckks, secret_key = generate_context_and_secret()
+            with ThreadPool() as pool:
+                pool.map(
+                    lambda client: client.set_ckks_context_and_secret_key(context_ckks, secret_key),
+                    aggregator.clients,
+                )
+            log_info(f'[MAIN] ROUND {round} | Homomorphic encryption keys created!')
 
         aggregator.run_distributed_fit(fed_round=round)
         aggregator.run_get_aggregated_model_and_align_clients(fed_round=round)
