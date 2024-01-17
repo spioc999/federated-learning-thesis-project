@@ -7,6 +7,8 @@ import tenseal.enc_context as ts_enc
 from services.ckks_he import generate_context_and_secret
 from services.logger import log_info, setup_logger
 import datetime
+import random
+import tensorflow as tf
 
 HE_CONFIG_KEY = 'he'
 ZK_CONFIG_KEY = 'zk'
@@ -16,6 +18,7 @@ FED_CONFIG = {
     ZK_CONFIG_KEY: False,
 }
 
+SEED = 42
 
 def _generate_clients(num_clients: int, context_ckks: ts.Context = None, secret_key: ts_enc.SecretKey = None) -> List[FedClient]:
     x_train_datasets, y_train_datasets, x_test_datasets, y_test_datasets = load_datasets(num_clients)
@@ -36,9 +39,10 @@ def _setup_config(enable_he: bool, enable_zk_proof: bool, verbose: bool):
     FED_CONFIG[HE_CONFIG_KEY] = enable_he
     FED_CONFIG[ZK_CONFIG_KEY] = enable_zk_proof
     setup_logger(verbose=verbose)
+    random.seed(SEED)
+    tf.keras.utils.set_random_seed(SEED)
+
     
-
-
 def start_fed_averaging_mnist_simulation(num_clients: int, num_rounds: int, fraction_fit: float = 1.0,
                               fraction_evaluate: float = 0.3, enable_he: bool = False,
                               enable_zk_proof: bool = False, verbose: bool = True) -> None:

@@ -3,6 +3,7 @@ from services.keras_and_datasets import get_model
 import random
 import numpy as np
 from typing import List, Dict
+import sys
 
 HE_CONFIG_KEY = 'he'
 ZK_CONFIG_KEY = 'zk'
@@ -67,14 +68,14 @@ class FedAggregator:
 
             clients_weights.append(fit_result)    
 
-        self._aggregator_log(f'FIT | ROUND {fed_round} | CLIENTS_FIT | Completed')
+        self._aggregator_log(f'FIT | ROUND {fed_round} | CLIENTS_FIT | Completed - Size clients_weights: {sys.getsizeof(clients_weights)}B')
 
         self._aggregator_log(f'FIT | ROUND {fed_round} | AGGREGATION_WEIGHTS | Started')
         summed_weights = [client_weights for client_weights in clients_weights[0]]
         for client_weights in clients_weights[1:]:
             for i, weights in enumerate(client_weights):
                 summed_weights[i] = summed_weights[i] + weights
-        num_summ = len(clients_weights)
+        num_summ = len(summed_weights)
         self._aggregator_log(f'FIT | ROUND {fed_round} | AGGREGATION_WEIGHTS | Completed')
 
         self._aggregator_log(f'FIT | ROUND {fed_round} | UPDATING_CLIENTS_WITH_AGGREGATED_WEIGHTS | Started')
