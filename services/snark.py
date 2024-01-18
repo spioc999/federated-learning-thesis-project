@@ -6,7 +6,7 @@ from services.logger import log_info
 
 BASE_SNARK_SERVICE = 'http://localhost:3000'
 
-def check_zk_snark() -> Tuple:
+def check_zk_snark() -> None:
     try:
         response = requests.get(BASE_SNARK_SERVICE + '/health')
         if not response.json()['status'] == 'ok':
