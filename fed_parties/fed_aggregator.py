@@ -142,7 +142,6 @@ class FedAggregator:
             else:
                 voting_dict[hash_w] = 1
 
-        print(f'VOTING DICTTTTTTT: {voting_dict}')
         most_voted = max(voting_dict, key=lambda k: voting_dict[k])
         return hash_dict[most_voted]
 
