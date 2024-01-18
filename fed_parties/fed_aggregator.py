@@ -98,21 +98,25 @@ class FedAggregator:
 
 
 
-    def run_get_aggregated_model_and_align_clients(self, fed_round: int) -> None:
+    def run_get_aggregated_model_and_align_with_voting(self, fed_round: int) -> None:
         self._aggregator_log(f'GET_AGGREGATED_MODEL | ROUND {fed_round} | Started')
 
         clients_weights = []
         with ThreadPool() as pool:
             if self.config[ZK_CONFIG_KEY]:
                 for client_result in pool.map(lambda client: client.get_model_weights_with_snark(), self.clients):
-                    client_weights, client_proof, client_public_signals = client_result
+                    client_weights, client_proof, client_public_signals, client_index = client_result
+                    self._aggregator_log(f'GET_AGGREGATED_MODEL | ROUND {fed_round} | ZK verifying FedClient#{client_index} ...')
                     if zk_snark_verify(client_proof, client_public_signals):
+                        self._aggregator_log(f'GET_AGGREGATED_MODEL | ROUND {fed_round} | ZK [OK] FedClient#{client_index}')
                         clients_weights.append(client_weights)
+                    else:
+                        self._aggregator_log(f'GET_AGGREGATED_MODEL | ROUND {fed_round} | ZK [NO] FedClient#{client_index}')
             else:
                 for client_weights in pool.map(lambda client: client.get_model_weights(), self.clients):
                     clients_weights.append(client_weights)
 
-        weights = clients_weights[0] #TODO
+        weights = clients_weights[0] #TODO voting
         self._aggregator_log(f'GET_AGGREGATED_MODEL | ROUND {fed_round} | Mock check voting TODOOO')
 
         #Update aggregator model

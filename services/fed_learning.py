@@ -48,9 +48,8 @@ def start_fed_averaging_mnist_simulation(num_clients: int, num_rounds: int, frac
     start_datetime = datetime.datetime.now()
     _setup_config(enable_he, enable_zk_proof, verbose)
     log_info(f'[MAIN] Starting FedAveraging MNIST simulation...')
-    log_info(f'[MAIN] SETUP | Fed_Config: {FED_CONFIG} - Verbose: {verbose}')
+    log_info(f'[MAIN] SETUP | Fed_Config: {FED_CONFIG} - Verbose: {verbose} - Clients: {num_clients} - Rounds: {num_rounds} - Fraction_Fit: {fraction_fit} - Fraction_Evaluate: {fraction_evaluate}')
 
-    
     if(FED_CONFIG[ZK_CONFIG_KEY]):
         log_info(f'[MAIN] SETUP | Checking ZK is available...')
         check_zk_snark()
@@ -81,7 +80,7 @@ def start_fed_averaging_mnist_simulation(num_clients: int, num_rounds: int, frac
             log_info(f'[MAIN] ROUND {round} | Homomorphic encryption keys created!')
 
         aggregator.run_distributed_fit(fed_round=round)
-        aggregator.run_get_aggregated_model_and_align_clients(fed_round=round)
+        aggregator.run_get_aggregated_model_and_align_with_voting(fed_round=round)
         aggregator.run_distributed_evaluate(fed_round=round)
         
         end_round_datetime = datetime.datetime.now()

@@ -69,10 +69,13 @@ class FedClient:
         return self.model.get_weights()
     
 
-    def get_model_weights_with_snark(self) -> Tuple[List[np.array], any, any]:
+    def get_model_weights_with_snark(self) -> Tuple[List[np.array], any, any, int]:
         weights = self.get_model_weights()
+        self._client_log(f'GET_MODEL_WEIGHTS_WITH_SNARK | Generating ZK snark prove...')
         proof, public_signals = zk_snark_prove(self.uuid, self.round_scale)
-        return weights, proof, public_signals
+        self._client_log(f'GET_MODEL_WEIGHTS_WITH_SNARK | ZK snark prove done and getting weights!')
+        weights = self.get_model_weights()
+        return weights, proof, public_signals, self.index
 
 
     def set_model_weights(self, weigths: List[np.array], _force_print_logs: bool = True) -> None:
