@@ -5,6 +5,7 @@ import numpy as np
 from typing import List, Dict
 from multiprocessing.pool import ThreadPool
 import sys
+from services.snark import zk_snark_verify
 
 HE_CONFIG_KEY = 'he'
 ZK_CONFIG_KEY = 'zk'
@@ -100,14 +101,16 @@ class FedAggregator:
     def run_get_aggregated_model_and_align_clients(self, fed_round: int) -> None:
         self._aggregator_log(f'GET_AGGREGATED_MODEL | ROUND {fed_round} | Started')
 
-        #TODO add voting here and update models and snark
         clients_weights = []
         with ThreadPool() as pool:
-            for client_weights in pool.map(
-                lambda client: client.get_model_weights(),
-                self.clients
-            ):
-                clients_weights.append(client_weights)
+            if self.config[ZK_CONFIG_KEY]:
+                for client_result in pool.map(lambda client: client.get_model_weights_with_snark(), self.clients):
+                    client_weights, client_proof, client_public_signals = client_result
+                    if zk_snark_verify(client_proof, client_public_signals):
+                        clients_weights.append(client_weights)
+            else:
+                for client_weights in pool.map(lambda client: client.get_model_weights(), self.clients):
+                    clients_weights.append(client_weights)
 
         weights = clients_weights[0] #TODO
         self._aggregator_log(f'GET_AGGREGATED_MODEL | ROUND {fed_round} | Mock check voting TODOOO')
