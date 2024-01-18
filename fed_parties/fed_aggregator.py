@@ -86,8 +86,8 @@ class FedAggregator:
         with ThreadPool() as pool:
             pool.map(
                 lambda client: 
-                    client.update_model_with_he(summed_weights, num_summ) if self.config[HE_CONFIG_KEY]
-                    else client.update_model(summed_weights, num_summ),
+                    client.scale_weights_and_update_model_with_he(summed_weights, num_summ) if self.config[HE_CONFIG_KEY]
+                    else client.scale_weights_and_update_model(summed_weights, num_summ),
                 self.clients,
             )
         self._aggregator_log(f'FIT | ROUND {fed_round} | UPDATING_CLIENTS_WITH_AGGREGATED_WEIGHTS | Completed')
@@ -100,7 +100,7 @@ class FedAggregator:
     def run_get_aggregated_model_and_align_clients(self, fed_round: int) -> None:
         self._aggregator_log(f'GET_AGGREGATED_MODEL | ROUND {fed_round} | Started')
 
-        #TODO add voting here and update models
+        #TODO add voting here and update models and snark
         clients_weights = []
         with ThreadPool() as pool:
             for client_weights in pool.map(
@@ -126,7 +126,6 @@ class FedAggregator:
         eval_clients = random.sample(self.clients, num_eval_clients)
         self._aggregator_log(f'EVALUATE | ROUND {fed_round} | Sampled {len(eval_clients)} clients')
 
-        #TODO complete me
         losses = []
         accuracies = []
         
@@ -134,8 +133,7 @@ class FedAggregator:
         with ThreadPool() as pool:
             for eval_result in pool.map(
                     lambda client:
-                        client.evaluate_with_zk_snark(fed_round) if self.config[ZK_CONFIG_KEY]
-                        else client.evaluate(fed_round),
+                        client.evaluate(fed_round),
                     eval_clients
                 ):
                 loss, accuracy = eval_result
