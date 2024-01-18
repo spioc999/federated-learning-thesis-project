@@ -4,18 +4,20 @@ import tenseal as ts
 import tenseal.enc_context as ts_enc
 from services.ckks_he import create_ckks_encrypted_tensor_list, decrypt_tensors
 from services.keras_and_datasets import get_model
+import uuid
 
 class FedClient:
     def __init__(
         self,
-        id: int,
+        index: int,
         train_dataset: Tuple,
         test_dataset: Tuple,
     ):
-        self.id = id
+        self.index = index
         self.train_dataset = train_dataset
         self.test_dataset = test_dataset
         self.model = get_model()
+        self.uuid = uuid.uuid4().int #Like a secret for the user
 
 
     def set_ckks_context_and_secret_key(self, context_ckks: ts.Context, secret_key: ts_enc.SecretKey) -> None:
@@ -26,7 +28,7 @@ class FedClient:
 
     def _client_log(self, message: str):
         from services.logger import log_info
-        log_info(f'[FedClient#{self.id}] {message}')
+        log_info(f'[FedClient#{self.index}] {message}')
 
 
 

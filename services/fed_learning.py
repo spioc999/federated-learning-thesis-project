@@ -5,6 +5,7 @@ from services.keras_and_datasets import load_datasets
 from multiprocessing.pool import ThreadPool
 from services.ckks_he import generate_context_and_secret
 from services.logger import log_info, setup_logger
+from services.snark import check_zk_snark
 import datetime
 import random
 import tensorflow as tf
@@ -23,7 +24,7 @@ def _generate_clients(num_clients: int) -> List[FedClient]:
     x_train_datasets, y_train_datasets, x_test_datasets, y_test_datasets = load_datasets(num_clients)
     return [
         FedClient(
-            id=i,
+            index=i,
             train_dataset=(x_train_datasets[i], y_train_datasets[i]),
             test_dataset=(x_test_datasets[i], y_test_datasets[i]),
         )
@@ -49,19 +50,19 @@ def start_fed_averaging_mnist_simulation(num_clients: int, num_rounds: int, frac
     log_info(f'[MAIN] Starting FedAveraging MNIST simulation...')
     log_info(f'[MAIN] SETUP | Fed_Config: {FED_CONFIG} - Verbose: {verbose}')
 
+    
     if(FED_CONFIG[ZK_CONFIG_KEY]):
-        pass #TODO
-
-
-    log_info(f'[MAIN] SETUP | FedClients created!')
+        log_info(f'[MAIN] SETUP | Checking ZK is available...')
+        check_zk_snark()
+        log_info(f'[MAIN] SETUP | ZK available!')
 
     aggregator = FedAggregator(
         clients=_generate_clients(num_clients),
         fraction_fit=fraction_fit,
         fraction_evaluate=fraction_evaluate,
-        config= FED_CONFIG
+        config= FED_CONFIG,
     )
-    log_info(f'[MAIN] SETUP | FedAggregator created and ready!')
+    log_info(f'[MAIN] SETUP | FedAggregator and FedClients created and ready!')
 
     aggregator.initialize()
 
