@@ -116,14 +116,34 @@ class FedAggregator:
                 for client_weights in pool.map(lambda client: client.get_model_weights(), self.clients):
                     clients_weights.append(client_weights)
 
-        weights = clients_weights[0] #TODO voting
-        self._aggregator_log(f'GET_AGGREGATED_MODEL | ROUND {fed_round} | Mock check voting TODOOO')
 
-        #Update aggregator model
-        self.model.set_weights(weights)
+        self._aggregator_log(f'GET_AGGREGATED_MODEL | ROUND {fed_round} | MAX_VOTING weights')
+        weights = FedAggregator._get_most_voted_weights(clients_weights)
+
+        self._aggregator_log(f'GET_AGGREGATED_MODEL | ROUND {fed_round} | Aligning all models and aggregator model')
+        with ThreadPool() as pool:
+            pool.map(
+                lambda client: client.set_model_weights(weights),
+                self.clients,
+            )
+        self.model.set_weights(weights) #Update aggregator model
+        
         self._aggregator_log(f'GET_AGGREGATED_MODEL | ROUND {fed_round} | Completed')
 
 
+    def _get_most_voted_weights(weights: List) -> None:
+        voting_dict = {}
+        hash_dict = {}
+        for w in weights:
+            hash_w = hash(str(w))
+            hash_dict[hash_w] = w
+            if hash_w in voting_dict:
+                voting_dict[hash_w] = voting_dict[hash_w] + 1
+            else:
+                voting_dict[hash_w] = 1
+
+        most_voted = max(voting_dict, key=lambda k: voting_dict[k])
+        return hash_dict[most_voted]
 
 
     def run_distributed_evaluate(self, fed_round: int) -> None:
