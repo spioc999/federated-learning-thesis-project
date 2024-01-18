@@ -4,18 +4,21 @@ import tenseal as ts
 import tenseal.enc_context as ts_enc
 from services.ckks_he import create_ckks_encrypted_tensor_list, decrypt_tensors
 from services.keras_and_datasets import get_model
+import uuid
+from services.snark import zk_snark_prove
 
 class FedClient:
     def __init__(
         self,
-        id: int,
+        index: int,
         train_dataset: Tuple,
         test_dataset: Tuple,
     ):
-        self.id = id
+        self.index = index
         self.train_dataset = train_dataset
         self.test_dataset = test_dataset
         self.model = get_model()
+        self.uuid = uuid.uuid4().int #Like a secret for the user
 
 
     def set_ckks_context_and_secret_key(self, context_ckks: ts.Context, secret_key: ts_enc.SecretKey) -> None:
@@ -26,7 +29,7 @@ class FedClient:
 
     def _client_log(self, message: str):
         from services.logger import log_info
-        log_info(f'[FedClient#{self.id}] {message}')
+        log_info(f'[FedClient#{self.index}] {message}')
 
 
 
@@ -62,12 +65,17 @@ class FedClient:
         return enc_weights
     
 
-
-
     def get_model_weights(self) -> List[np.array]:
         return self.model.get_weights()
     
 
+    def get_model_weights_with_snark(self) -> Tuple[List[np.array], any, any, int]:
+        weights = self.get_model_weights()
+        self._client_log(f'GET_MODEL_WEIGHTS_WITH_SNARK | Generating ZK snark prove...')
+        proof, public_signals = zk_snark_prove(self.uuid, self.round_scale)
+        self._client_log(f'GET_MODEL_WEIGHTS_WITH_SNARK | ZK snark prove done and getting weights!')
+        weights = self.get_model_weights()
+        return weights, proof, public_signals, self.index
 
 
     def set_model_weights(self, weigths: List[np.array], _force_print_logs: bool = True) -> None:
@@ -77,19 +85,20 @@ class FedClient:
 
 
 
-    def update_model(self, weigths: List[np.array], scale: int) -> None:
+    def scale_weights_and_update_model(self, weigths: List[np.array], scale: int) -> None:
         self._client_log(f'UPDATE_MODEL | Scaling weights')
         scaled_weights = [arrays / scale for arrays in weigths]
+        self.round_scale = scale
         self.set_model_weights(scaled_weights)
     
 
 
     
-    def update_model_with_he(self, encrypted_weights: List[ts.CKKSTensor], scale: int) -> None:
+    def scale_weights_and_update_model_with_he(self, encrypted_weights: List[ts.CKKSTensor], scale: int) -> None:
         self._client_log(f'UPDATE_MODEL_WITH_HE | Decrypting weights')
         updated_weights = decrypt_tensors(encrypted_weights, self.secret_key)
         self._client_log(f'UPDATE_MODEL_WITH_HE | Weights decrypted')
-        self.update_model(updated_weights, scale)
+        self.scale_weights_and_update_model(updated_weights, scale)
 
 
 
@@ -100,11 +109,3 @@ class FedClient:
         loss, accuracy = self.model.evaluate(x, y, verbose=0)
         if _force_print_logs: self._client_log(f'EVALUATE | ROUND {round} | Completed')
         return float(loss), float(accuracy)
-    
-
-    
-
-    def evaluate_with_zk_snark(self, round: int):
-        self._client_log(f'EVALUATE_WITH_ZK_SNARK | ROUND {round} | Started')
-        #TODO complete me 
-        self._client_log(f'EVALUATE_WITH_ZK_SNARK | ROUND {round} | Completed')
