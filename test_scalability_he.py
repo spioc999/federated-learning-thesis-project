@@ -5,14 +5,7 @@ import argparse
 from memory_profiler import profile
 
 @profile
-def sum_encrypted(clients_weights):
-    summed_weights = [client_weights for client_weights in clients_weights[0]]
-    for client_weights in clients_weights[1:]:
-        for i, weights in enumerate(client_weights):
-            summed_weights[i] = summed_weights[i] + weights
-    return summed_weights
-
-if __name__ == "__main__":
+def run_main():
     parser = argparse.ArgumentParser()
     parser.add_argument('num')
     args = parser.parse_args()
@@ -32,10 +25,26 @@ if __name__ == "__main__":
     log_info(f'End encrypting weights')
 
     log_info(f'Start sum')
-    summed_weights = sum_encrypted(clients_weights)
+    summed_weights = [client_weights for client_weights in clients_weights[0]]
+    for client_weights in clients_weights[1:]:
+        for i, weights in enumerate(client_weights):
+            summed_weights[i] = summed_weights[i] + weights
     log_info(f'End sum')
+
+    del clients_weights
 
     log_info(f'Start decrypt')
     decrypted_weights = decrypt_tensors(summed_weights, secret)
     log_info(f'End decrypt')
+
+    log_info(f'Start scale')
+    scaled_weights = [arrays / NUM_SUM for arrays in decrypted_weights]
+    log_info(f'End scale')
+
+    del summed_weights
+    del decrypted_weights
+    del scaled_weights
+
+if __name__ == "__main__":
+    run_main()
 
