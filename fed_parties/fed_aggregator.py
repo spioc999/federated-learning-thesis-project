@@ -67,11 +67,18 @@ class FedAggregator:
         with ThreadPool() as pool:
             for fit_result in pool.map(
                 lambda client: 
-                    client.fit_with_he(fed_round) if self.config[HE_CONFIG_KEY]
-                    else client.fit(fed_round),
+                    client.run_fit(fed_round, self.config[HE_CONFIG_KEY], self.config[ZK_CONFIG_KEY]),
                 fit_clients
             ):
-                clients_weights.append(fit_result)   
+                if self.config[ZK_CONFIG_KEY]:
+                    fit_weights, proof, public_signals, client_index = fit_result
+                    if zk_snark_verify(proof, public_signals):
+                        self._aggregator_log(f'FIT | ROUND {fed_round} | CLIENTS_FIT | ZK [OK] FedClient#{client_index}')
+                        clients_weights.append(fit_weights)  
+                    else:
+                        self._aggregator_log(f'FIT | ROUND {fed_round} | CLIENTS_FIT | ZK [NO] FedClient#{client_index}')
+                else:
+                    clients_weights.append(fit_result)   
 
         self._aggregator_log(f'FIT | ROUND {fed_round} | CLIENTS_FIT | Completed - Size clients_weights: {sys.getsizeof(clients_weights)}B')
 

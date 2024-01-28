@@ -39,9 +39,22 @@ class FedClient:
         self.set_model_weights(model_weights, _force_print_logs=False)
 
 
+    def run_fit(self, round: int, he: bool, zk: bool, batch_size: int = 128, epochs: int = 2):
+        if he:
+            weights = self._fit_with_he(round, batch_size=batch_size, epochs=epochs)
+        else:
+            weights = self._fit(round, batch_size=batch_size, epochs=epochs)
+
+        if zk:
+            self._client_log(f'FIT | ROUND {round} | Generating ZK snark prove...')
+            proof, public_signals = zk_snark_prove(self.uuid, len(self.train_dataset))
+            self._client_log(f'FIT | ROUND {round} | ZK snark prove done!')
+            return weights, proof, public_signals, self.index
+        
+        return weights
 
 
-    def fit(self, round: int, batch_size: int = 128, epochs: int = 2, _force_print_logs: bool = True) -> List[np.array]:
+    def _fit(self, round: int, batch_size: int = 128, epochs: int = 2, _force_print_logs: bool = True) -> List[np.array]:
         if _force_print_logs: self._client_log(f'FIT | ROUND {round} | Batch_Size: {batch_size} - Epochs: {epochs} | Started')
         x, y = self.train_dataset
         self.model.fit(
@@ -54,11 +67,9 @@ class FedClient:
         return self.get_model_weights()
 
 
-
-
-    def fit_with_he(self, round: int, batch_size: int = 128, epochs: int = 2) -> List[ts.CKKSTensor]:
+    def _fit_with_he(self, round: int, batch_size: int = 128, epochs: int = 2) -> List[ts.CKKSTensor]:
         self._client_log(f'FIT_WITH_HE | ROUND {round} | Batch_Size: {batch_size} - Epochs: {epochs} | Started')
-        weigths = self.fit(round=round, batch_size=batch_size, epochs=epochs, _force_print_logs=False)
+        weigths = self._fit(round=round, batch_size=batch_size, epochs=epochs, _force_print_logs=False)
         self._client_log(f'FIT_WITH_HE | ROUND {round} | Fit completed and encrypting weights')
         enc_weights = create_ckks_encrypted_tensor_list(weigths, self.context_ckks)
         self._client_log(f'FIT_WITH_HE | ROUND {round} | Completed and returning CKKS encrypted weights')
